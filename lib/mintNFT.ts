@@ -137,11 +137,6 @@ export const signMessage = async (passkey: PasskeyArgType,
     signature: signature.encodedSignatures()
   }
   try {
-    // const recoverMessageAddressaddress = await recoverMessageAddress({ 
-    //   message: message,
-    //   signature: signature.encodedSignatures() as `0x${string}`
-    // })
-    // console.log('recoverMessageAddressaddress', recoverMessageAddressaddress)
     console.log('safeAddress', safeAddress)
     await apiKit.addMessage(safeAddress, messageProps)
   } catch (error) {
