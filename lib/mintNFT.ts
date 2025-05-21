@@ -129,7 +129,7 @@ export const signMessage = async (passkey: PasskeyArgType,
   })
   const safeAddress = await safe4337Pack.protocolKit.getAddress()
   const messageToSign = await safe4337Pack.protocolKit.createMessage(message)
-  const signature = await safe4337Pack.protocolKit.signMessage(messageToSign, SigningMethod.SAFE_SIGNATURE, '0xaDdA20B6365EBCECC99CA03B778FdBA218438C6B')
+  const signature = await safe4337Pack.protocolKit.signMessage(messageToSign, SigningMethod.SAFE_SIGNATURE, signerAddress) 
   console.log('signature', signature.getSignature(signerAddress)?.dynamicPart())
   console.log('messageToSign', messageToSign.data)
   const messageProps = {
