@@ -1,5 +1,6 @@
 import { PasskeyArgType, extractPasskeyData } from '@safe-global/protocol-kit'
 import { STORAGE_PASSKEY_LIST_KEY } from './constants'
+import { Address } from 'viem'
 
 /**
  * Create a passkey using WebAuthn API.
@@ -37,8 +38,6 @@ export async function createPasskey(): Promise<PasskeyArgType> {
   }
 
   const passkey = await extractPasskeyData(passkeyCredential)
-  console.log('Created Passkey:', passkey)
-
   return passkey
 }
 

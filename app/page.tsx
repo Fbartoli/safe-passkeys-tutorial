@@ -12,6 +12,7 @@ import { createPasskey, storePasskeyInLocalStorage } from '../lib/passkeys'
 
 function Create4337SafeAccount() {
   const [selectedPasskey, setSelectedPasskey] = useState<PasskeyArgType>()
+  const [address, setAddress] = useState<Address>()
 
   async function handleCreatePasskey() {
     const passkey = await createPasskey()

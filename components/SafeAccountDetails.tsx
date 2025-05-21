@@ -14,7 +14,7 @@ import { Safe4337Pack } from '@safe-global/relay-kit'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
 import { BUNDLER_URL, CHAIN_NAME, RPC_URL } from '../lib/constants'
-import { mintNFT } from '../lib/mintNFT'
+import { mintNFT, signMessage } from '../lib/mintNFT'
 import SafeLogo from '../public/safeLogo.png'
 
 type props = {
@@ -55,14 +55,35 @@ function SafeAccountDetails({ passkey }: props) {
   async function handleMintNFT() {
     setIsLoading(true)
 
-    const userOp = await mintNFT(passkey, safeAddress!)
+    try {
+      const userOp = await mintNFT(passkey, isSafeDeployed!, safeAddress!)
+      setUserOp(userOp)
+      setIsSafeDeployed(true)
 
-    setIsLoading(false)
-    setIsSafeDeployed(true)
-    setUserOp(userOp)
+    } catch (error) {
+      console.log(error)
+    } finally {
+      setIsLoading(false)
+
+    }
+
   }
 
-  const safeLink = `https://app.safe.global/home?safe=sep:${safeAddress}`
+  async function handleSignMessage() {
+    setIsLoading(true)
+
+    try {
+      await signMessage(passkey, isSafeDeployed!, safeAddress!, 'Hello World')
+    } catch (error) {
+      console.log(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
+
+  const safeLink = `https://app.safe.global/home?safe=basesep:${safeAddress}`
   const jiffscanLink = `https://jiffyscan.xyz/userOpHash/${userOp}?network=${CHAIN_NAME}`
 
   return (
@@ -113,6 +134,15 @@ function SafeAccountDetails({ passkey }: props) {
               sx={{ margin: '24px' }}
             >
               Mint NFT
+            </Button>
+
+            <Button
+              onClick={handleSignMessage}
+              startIcon={<PhotoIcon />}
+              variant="outlined"
+              sx={{ margin: '24px' }}
+            >
+              Sign Message
             </Button>
 
             {userOp && (

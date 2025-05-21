@@ -1,68 +1,153 @@
-import { PasskeyArgType } from '@safe-global/protocol-kit'
-import { Safe4337Pack, SponsoredPaymasterOption } from '@safe-global/relay-kit'
-import { encodeFunctionData } from 'viem'
+import { PasskeyArgType, PasskeyClient, SigningMethod } from '@safe-global/protocol-kit'
+
+import { Address, encodeFunctionData, getContract, http, parseAbiItem, createPublicClient } from 'viem'
 import {
   BUNDLER_URL,
   NFT_ADDRESS,
-  PAYMASTER_ADDRESS,
   PAYMASTER_URL,
   RPC_URL
 } from './constants'
+import { PASSKEY_FACTORY, PASSKEY_FACTORY_ABI } from './abi'
+import { baseSepolia } from 'viem/chains'
+import { Safe4337Pack, SponsoredPaymasterOption } from '@safe-global/relay-kit'
+import SafeApiKit  from '@safe-global/api-kit'
+const VERIFIER_ADDRESS = '0x445a0683e494ea0c5AF3E83c5159fBE47Cf9e765' as Address
+const SENTINEL_ADDRESS = '0x0000000000000000000000000000000000000001' as Address
+const SHARED_WEBAUTHN = '0x94a4F6affBd8975951142c3999aEAB7ecee555c2' as Address
+
+const apiKit = new SafeApiKit({
+  chainId: BigInt(baseSepolia.id),
+})
+
 
 const paymasterOptions = {
   isSponsored: true,
-  paymasterAddress: PAYMASTER_ADDRESS,
   paymasterUrl: PAYMASTER_URL
 } as SponsoredPaymasterOption
 
 /**
  * Mint an NFT.
  * @param {PasskeyArgType} signer - Signer object with rawId and coordinates.
- * @param {string} safeAddress - Safe address.
  * @returns {Promise<void>}
  * @throws {Error} If the operation fails.
  */
 export const mintNFT = async (
   passkey: PasskeyArgType,
-  safeAddress: string
+  isSafeDeployed: boolean,
+  address: Address
 ): Promise<string> => {
-  // 1) Initialize Safe4337Pack
+  const passkeyContract = getContract({
+    address: PASSKEY_FACTORY.networkAddresses[84532],
+    abi: PASSKEY_FACTORY_ABI,
+    client: createPublicClient({
+      chain: baseSepolia,
+      transport: http()
+    })
+  })
+  const signerAddress = await passkeyContract.read.getSigner([BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)])
+  console.log('Signer from passkey', signerAddress)
+  const options = isSafeDeployed ? { safeAddress: address } : { owners: [], threshold: 1 }
   const safe4337Pack = await Safe4337Pack.init({
     provider: RPC_URL,
     signer: passkey,
     bundlerUrl: BUNDLER_URL,
     paymasterOptions,
-    options: {
-      owners: [
-        /* Other owners... */
-      ],
-      threshold: 1
-    }
+    options
   })
+  const safeAddress = await safe4337Pack.protocolKit.getAddress()
+  const txs = []
 
-  // 2) Create SafeOperation
-  const mintNFTTransaction = {
+  console.log('IsSafeDeployed', isSafeDeployed)
+  if (!isSafeDeployed) {
+    const safeProvider = safe4337Pack.protocolKit.getSafeProvider()
+    const signer = await safeProvider.getExternalSigner() as any as PasskeyClient
+    console.log(signer)
+    const createSignerTx = {
+      to: PASSKEY_FACTORY.networkAddresses[84532],
+      data: encodeFunctionData({
+        abi: PASSKEY_FACTORY_ABI,
+        functionName: 'createSigner',
+        args: [BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)]
+      }),
+      value: '0'
+    }
+    const swapOwnerTx = {
+      to: safeAddress,
+      data: encodeFunctionData({
+        abi: [parseAbiItem('function swapOwner(address prevOwner, address oldOwner, address newOwner)')],
+        functionName: 'swapOwner',
+        args: [SENTINEL_ADDRESS, SHARED_WEBAUTHN, signerAddress]
+      }),
+      value: '0'
+
+    }
+    txs.push(createSignerTx)
+    txs.push(swapOwnerTx)
+  }
+
+  const mintTx = {
     to: NFT_ADDRESS,
     data: encodeSafeMintData(safeAddress),
     value: '0'
   }
-
+  txs.push(mintTx)
   const safeOperation = await safe4337Pack.createTransaction({
-    transactions: [mintNFTTransaction]
+    transactions: txs
   })
 
-  // 3) Sign SafeOperation
   const signedSafeOperation =
     await safe4337Pack.signSafeOperation(safeOperation)
 
-  console.log('SafeOperation', signedSafeOperation)
 
-  // 4) Execute SafeOperation
   const userOperationHash = await safe4337Pack.executeTransaction({
     executable: signedSafeOperation
   })
 
   return userOperationHash
+}
+
+export const signMessage = async (passkey: PasskeyArgType,
+  isSafeDeployed: boolean,
+  address: Address,
+  message: string): Promise<string> => {
+  const passkeyContract = getContract({
+    address: PASSKEY_FACTORY.networkAddresses[84532],
+    abi: PASSKEY_FACTORY_ABI,
+    client: createPublicClient({
+      chain: baseSepolia,
+      transport: http()
+    })
+  })
+  const signerAddress = await passkeyContract.read.getSigner([BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)])
+  const options = isSafeDeployed ? { safeAddress: address } : { owners: [], threshold: 1 }
+  const safe4337Pack = await Safe4337Pack.init({
+    provider: RPC_URL,
+    signer: passkey,
+    bundlerUrl: BUNDLER_URL,
+    paymasterOptions,
+    options
+  })
+  const safeAddress = await safe4337Pack.protocolKit.getAddress()
+  const messageToSign = await safe4337Pack.protocolKit.createMessage(message)
+  const signature = await safe4337Pack.protocolKit.signMessage(messageToSign, SigningMethod.SAFE_SIGNATURE, '0xaDdA20B6365EBCECC99CA03B778FdBA218438C6B')
+  console.log('signature', signature.getSignature(signerAddress)?.dynamicPart())
+  console.log('messageToSign', messageToSign.data)
+  const messageProps = {
+    message: message,
+    signature: signature.encodedSignatures()
+  }
+  try {
+    // const recoverMessageAddressaddress = await recoverMessageAddress({ 
+    //   message: message,
+    //   signature: signature.encodedSignatures() as `0x${string}`
+    // })
+    // console.log('recoverMessageAddressaddress', recoverMessageAddressaddress)
+    console.log('safeAddress', safeAddress)
+    await apiKit.addMessage(safeAddress, messageProps)
+  } catch (error) {
+    console.log('error', error)
+  }
+  return 'done'
 }
 
 /**

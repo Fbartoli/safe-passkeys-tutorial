@@ -14,8 +14,10 @@
     "@emotion/styled": "^11.11.5",
     "@mui/icons-material": "^5.16.0",
     "@mui/material": "^5.16.0",
-    "@safe-global/protocol-kit": "4.1.0",
-    "@safe-global/relay-kit": "3.1.0",
+    "@safe-global/api-kit": "^3.0.1",
+    "@safe-global/protocol-kit": "5.1.1",
+    "@safe-global/relay-kit": "3.1.1",
+    "@safe-global/types-kit": "^1.0.1",
     "@svgr/webpack": "^8.1.0",
     "next": "14.2.3",
     "react": "^18",
@@ -30,5 +32,6 @@
     "eslint-config-next": "14.2.3",
     "prettier": "^3.3.3",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387"
 }
