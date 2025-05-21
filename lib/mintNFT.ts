@@ -119,7 +119,7 @@ export const signMessage = async (passkey: PasskeyArgType,
     })
   })
   const signerAddress = await passkeyContract.read.getSigner([BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)])
-  const options = isSafeDeployed ? { safeAddress: address } : { owners: [], threshold: 1 }
+  const options = { safeAddress: address }
   const safe4337Pack = await Safe4337Pack.init({
     provider: RPC_URL,
     signer: passkey,
