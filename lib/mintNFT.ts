@@ -34,7 +34,6 @@ const paymasterOptions = {
  */
 export const mintNFT = async (
   passkey: PasskeyArgType,
-  isSafeDeployed: boolean,
   address: Address
 ): Promise<string> => {
   console.log('coordinates x', BigInt(passkey.coordinates.x))

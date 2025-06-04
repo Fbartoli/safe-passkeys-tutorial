@@ -52,7 +52,7 @@ function SafeAccountDetails({ passkey }: props) {
     setIsLoading(true)
 
     try {
-      const userOp = await mintNFT(passkey, isSafeDeployed!, safeAddress!)
+      const userOp = await mintNFT(passkey, safeAddress!)
       setUserOp(userOp)
       setIsSafeDeployed(true)
 
