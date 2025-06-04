@@ -13,8 +13,6 @@ import { Safe4337Pack, SponsoredPaymasterOption } from '@safe-global/relay-kit'
 import protocolKit from '@safe-global/protocol-kit'
 import SafeApiKit  from '@safe-global/api-kit'
 const VERIFIER_ADDRESS = '0x445a0683e494ea0c5AF3E83c5159fBE47Cf9e765' as Address
-const SENTINEL_ADDRESS = '0x0000000000000000000000000000000000000001' as Address
-const SHARED_WEBAUTHN = '0x94a4F6affBd8975951142c3999aEAB7ecee555c2' as Address
 
 const apiKit = new SafeApiKit({
   chainId: BigInt(sepolia.id),
@@ -47,6 +45,12 @@ export const mintNFT = async (
   })
   const safeProvider = await safeProtocolKit.getSafeProvider()
   const signer = await safeProvider.getExternalSigner() as any as PasskeyClient
+  const deployTx = signer.createDeployTxRequest()
+  const createSignerTx = signer.encodeCreateSigner()
+  const configureTx = signer.encodeConfigure()
+  console.log('createSignerTx', createSignerTx)
+  console.log('configureTx', configureTx)
+  console.log('deployTx', deployTx)
   console.log('signer', signer)
   const safeAddress = await safeProtocolKit.getAddress()
   console.log('safeAddress', safeAddress)
@@ -63,14 +67,14 @@ export const mintNFT = async (
     transactions: txs
   })
   const signedSafeOperation =
-    await safeProtocolKit.signTransaction(safeOperation)
+  await safeProtocolKit.signTransaction(safeOperation)
   const safeTxHash = await safeProtocolKit.getTransactionHash(signedSafeOperation)
 
     await apiKit.proposeTransaction({
       safeAddress: address,
       safeTransactionData: signedSafeOperation.data,
       safeTxHash: safeTxHash,
-      senderAddress: signer.account.address,
+      senderAddress: '0xbEacAFFCF9DfF7C245e9eD3384835838fdbF9965',
       senderSignature: signedSafeOperation.encodedSignatures()
     })
 
