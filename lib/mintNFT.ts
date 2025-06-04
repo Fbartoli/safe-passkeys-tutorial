@@ -85,27 +85,15 @@ export const signMessage = async (passkey: PasskeyArgType,
   isSafeDeployed: boolean,
   address: Address,
   message: string): Promise<string> => {
-  const passkeyContract = getContract({
-    address: PASSKEY_FACTORY.networkAddresses[84532],
-    abi: PASSKEY_FACTORY_ABI,
-    client: createPublicClient({
-      chain: sepolia,
-      transport: http()
-    })
-  })
-  const signerAddress = await passkeyContract.read.getSigner([BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)])
-  const options = { safeAddress: address }
-  const safe4337Pack = await Safe4337Pack.init({
+  const safeProtocolKit = await protocolKit.init({
     provider: RPC_URL,
     signer: passkey,
-    bundlerUrl: BUNDLER_URL,
-    paymasterOptions,
-    options
+    safeAddress: address
   })
-  const safeAddress = await safe4337Pack.protocolKit.getAddress()
-  const messageToSign = await safe4337Pack.protocolKit.createMessage(message)
-  const signature = await safe4337Pack.protocolKit.signMessage(messageToSign, SigningMethod.SAFE_SIGNATURE, signerAddress) 
-  console.log('signature', signature.getSignature(signerAddress)?.dynamicPart())
+  const safeAddress = await safeProtocolKit.getAddress()
+  const messageToSign = await safeProtocolKit.createMessage(message)
+  const signature = await safeProtocolKit.signMessage(messageToSign, SigningMethod.SAFE_SIGNATURE, '0xbEacAFFCF9DfF7C245e9eD3384835838fdbF9965') 
+  console.log('signature', signature.getSignature('0xbEacAFFCF9DfF7C245e9eD3384835838fdbF9965')?.dynamicPart())
   console.log('messageToSign', messageToSign.data)
   const messageProps = {
     message: message,
