@@ -8,15 +8,16 @@ import {
   RPC_URL
 } from './constants'
 import { PASSKEY_FACTORY, PASSKEY_FACTORY_ABI } from './abi'
-import { baseSepolia } from 'viem/chains'
+import { sepolia } from 'viem/chains'
 import { Safe4337Pack, SponsoredPaymasterOption } from '@safe-global/relay-kit'
+import protocolKit from '@safe-global/protocol-kit'
 import SafeApiKit  from '@safe-global/api-kit'
 const VERIFIER_ADDRESS = '0x445a0683e494ea0c5AF3E83c5159fBE47Cf9e765' as Address
 const SENTINEL_ADDRESS = '0x0000000000000000000000000000000000000001' as Address
 const SHARED_WEBAUTHN = '0x94a4F6affBd8975951142c3999aEAB7ecee555c2' as Address
 
 const apiKit = new SafeApiKit({
-  chainId: BigInt(baseSepolia.id),
+  chainId: BigInt(sepolia.id),
 })
 
 
@@ -36,74 +37,45 @@ export const mintNFT = async (
   isSafeDeployed: boolean,
   address: Address
 ): Promise<string> => {
-  const passkeyContract = getContract({
-    address: PASSKEY_FACTORY.networkAddresses[84532],
-    abi: PASSKEY_FACTORY_ABI,
-    client: createPublicClient({
-      chain: baseSepolia,
-      transport: http()
-    })
-  })
-  const signerAddress = await passkeyContract.read.getSigner([BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)])
-  console.log('Signer from passkey', signerAddress)
-  const options = isSafeDeployed ? { safeAddress: address } : { owners: [], threshold: 1 }
-  const safe4337Pack = await Safe4337Pack.init({
+  console.log('coordinates x', BigInt(passkey.coordinates.x))
+  console.log('coordinates y', BigInt(passkey.coordinates.y))
+  console.log('verifier address', BigInt(VERIFIER_ADDRESS))
+  console.log('address', address)
+  const safeProtocolKit = await protocolKit.init({
     provider: RPC_URL,
     signer: passkey,
-    bundlerUrl: BUNDLER_URL,
-    paymasterOptions,
-    options
+    safeAddress: address
   })
-  const safeAddress = await safe4337Pack.protocolKit.getAddress()
+  const safeProvider = await safeProtocolKit.getSafeProvider()
+  const signer = await safeProvider.getExternalSigner() as any as PasskeyClient
+  console.log('signer', signer)
+  const safeAddress = await safeProtocolKit.getAddress()
+  console.log('safeAddress', safeAddress)
+  console.log('signers', await safeProtocolKit.getOwners())
+  console.log('threshold', await safeProtocolKit.getThreshold())
   const txs = []
-
-  console.log('IsSafeDeployed', isSafeDeployed)
-  if (!isSafeDeployed) {
-    const safeProvider = safe4337Pack.protocolKit.getSafeProvider()
-    const signer = await safeProvider.getExternalSigner() as any as PasskeyClient
-    console.log(signer)
-    const createSignerTx = {
-      to: PASSKEY_FACTORY.networkAddresses[84532],
-      data: encodeFunctionData({
-        abi: PASSKEY_FACTORY_ABI,
-        functionName: 'createSigner',
-        args: [BigInt(passkey.coordinates.x), BigInt(passkey.coordinates.y), BigInt(VERIFIER_ADDRESS)]
-      }),
-      value: '0'
-    }
-    const swapOwnerTx = {
-      to: safeAddress,
-      data: encodeFunctionData({
-        abi: [parseAbiItem('function swapOwner(address prevOwner, address oldOwner, address newOwner)')],
-        functionName: 'swapOwner',
-        args: [SENTINEL_ADDRESS, SHARED_WEBAUTHN, signerAddress]
-      }),
-      value: '0'
-
-    }
-    txs.push(createSignerTx)
-    txs.push(swapOwnerTx)
-  }
-
   const mintTx = {
     to: NFT_ADDRESS,
     data: encodeSafeMintData(safeAddress),
     value: '0'
   }
   txs.push(mintTx)
-  const safeOperation = await safe4337Pack.createTransaction({
+  const safeOperation = await safeProtocolKit.createTransaction({
     transactions: txs
   })
-
   const signedSafeOperation =
-    await safe4337Pack.signSafeOperation(safeOperation)
+    await safeProtocolKit.signTransaction(safeOperation)
+  const safeTxHash = await safeProtocolKit.getTransactionHash(signedSafeOperation)
 
+    await apiKit.proposeTransaction({
+      safeAddress: address,
+      safeTransactionData: signedSafeOperation.data,
+      safeTxHash: safeTxHash,
+      senderAddress: signer.account.address,
+      senderSignature: signedSafeOperation.encodedSignatures()
+    })
 
-  const userOperationHash = await safe4337Pack.executeTransaction({
-    executable: signedSafeOperation
-  })
-
-  return userOperationHash
+  return safeTxHash
 }
 
 export const signMessage = async (passkey: PasskeyArgType,
@@ -114,7 +86,7 @@ export const signMessage = async (passkey: PasskeyArgType,
     address: PASSKEY_FACTORY.networkAddresses[84532],
     abi: PASSKEY_FACTORY_ABI,
     client: createPublicClient({
-      chain: baseSepolia,
+      chain: sepolia,
       transport: http()
     })
   })

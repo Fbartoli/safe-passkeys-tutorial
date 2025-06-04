@@ -10,7 +10,7 @@ import {
   Typography
 } from '@mui/material'
 import { PasskeyArgType } from '@safe-global/protocol-kit'
-import { Safe4337Pack } from '@safe-global/relay-kit'
+import protocolKit from '@safe-global/protocol-kit'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
 import { BUNDLER_URL, CHAIN_NAME, RPC_URL } from '../lib/constants'
@@ -30,18 +30,14 @@ function SafeAccountDetails({ passkey }: props) {
   const showSafeInfo = useCallback(async () => {
     setIsLoading(true)
 
-    const safe4337Pack = await Safe4337Pack.init({
+    const SafeProtocolKit = await protocolKit.init({
       provider: RPC_URL,
       signer: passkey,
-      bundlerUrl: BUNDLER_URL,
-      options: {
-        owners: [],
-        threshold: 1
-      }
+      safeAddress: '0x00775aEc9F8b44BA7a736900e1176705baCe4c98'
     })
 
-    const safeAddress = await safe4337Pack.protocolKit.getAddress()
-    const isSafeDeployed = await safe4337Pack.protocolKit.isSafeDeployed()
+    const safeAddress = await SafeProtocolKit.getAddress()
+    const isSafeDeployed = await SafeProtocolKit.isSafeDeployed()
 
     setSafeAddress(safeAddress)
     setIsSafeDeployed(isSafeDeployed)
@@ -83,7 +79,7 @@ function SafeAccountDetails({ passkey }: props) {
 
 
 
-  const safeLink = `https://app.safe.global/home?safe=basesep:${safeAddress}`
+  const safeLink = `https://app.safe.global/home?safe=sep:${safeAddress}`
   const jiffscanLink = `https://jiffyscan.xyz/userOpHash/${userOp}?network=${CHAIN_NAME}`
 
   return (
